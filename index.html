@@ -5,6 +5,9 @@
   <title>CAPTCHA Verification</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+  <!-- Telegram Web App support -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
   <!-- Font Awesome for icons -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/js/all.min.js" crossorigin="anonymous"></script>
 
@@ -102,34 +105,18 @@
     }
 
     @keyframes dropFade {
-      0% {
-        transform: translateY(-40px);
-        opacity: 0;
-      }
-      100% {
-        transform: translateY(0);
-        opacity: 1;
-      }
+      0% { transform: translateY(-40px); opacity: 0; }
+      100% { transform: translateY(0); opacity: 1; }
     }
 
     @keyframes fadeSlide {
-      0% {
-        opacity: 0;
-        transform: translateX(-10px);
-      }
-      100% {
-        opacity: 1;
-        transform: translateX(0);
-      }
+      0% { opacity: 0; transform: translateX(-10px); }
+      100% { opacity: 1; transform: translateX(0); }
     }
 
     @keyframes pulse {
-      0%, 100% {
-        transform: scale(1);
-      }
-      50% {
-        transform: scale(1.05);
-      }
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
     }
   </style>
 </head>
@@ -176,12 +163,32 @@
           return;
         }
 
-        await fetch(webhookUrl);
-        showMessage("Verification successful. Redirecting you shortly...", "success");
+        // Send full payload to webhook
+        await fetch(webhookUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            results: {
+              ip: data.ip,
+              vpn: suspicious ? "yes" : "no",
+              captcha: true
+            }
+          })
+        });
+
+        showMessage("Verification successful. You may now return.", "success");
         button.innerHTML = '<i class="fas fa-arrow-right"></i> Go Back';
+        button.disabled = false;
+
+        // Close Telegram WebApp
         button.onclick = () => {
-          window.location.href = back;
+          if (window.Telegram && Telegram.WebApp) {
+            Telegram.WebApp.close();
+          } else {
+            window.location.href = back;
+          }
         };
+
       } catch (e) {
         showMessage("Verification failed. Please check your connection and try again.", "error");
         resetButton();
