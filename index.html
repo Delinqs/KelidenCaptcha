@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CAPTCHA Verification</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      background: #fff;
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      overflow-x: hidden;
+    }
+
+    .box {
+      max-width: 400px;
+      margin: 100px auto;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.1);
+      animation: slideDown 0.7s ease;
+    }
+
+    .green {
+      background: #d4edda;
+      border: 1px solid #28a745;
+      color: #155724;
+    }
+
+    .red {
+      background: #f8d7da;
+      border: 1px solid #dc3545;
+      color: #721c24;
+    }
+
+    .msg-icon {
+      font-size: 20px;
+      margin-right: 5px;
+      vertical-align: middle;
+    }
+
+    .btn {
+      background: #007bff;
+      color: #fff;
+      padding: 12px;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      margin-top: 15px;
+      width: 100%;
+      cursor: pointer;
+    }
+
+    .btn:hover {
+      background: #0056b3;
+    }
+
+    @keyframes slideDown {
+      from {
+        transform: translateY(-50px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="box" id="statusBox">
+    <div id="message" class="hidden"></div>
+    <p style="font-size:18px;"><b>🔐 CAPTCHA Verification</b></p>
+    <p>Please verify you're not a robot. Your IP and location will be checked.</p>
+    <button class="btn" onclick="startVerification()">Verify Now</button>
+  </div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const webhookUrl = urlParams.get("webhookUrl");
+    const back = urlParams.get("back");
+
+    const messageBox = document.getElementById("message");
+
+    async function startVerification() {
+      try {
+        const res = await fetch("https://ipapi.co/json/");
+        const data = await res.json();
+
+        const suspicious = data.security?.vpn || data.security?.proxy || data.security?.tor;
+        const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+
+        if (suspicious || !isMobile) {
+          showMessage("Suspicious Activity Detected! Please disable VPN or use a valid device.", "red");
+          return;
+        }
+
+        // ✅ Send webhook
+        await fetch(webhookUrl);
+        showMessage("You have been verified successfully. Redirecting...", "green");
+
+        setTimeout(() => {
+          window.location.href = back;
+        }, 2000);
+      } catch (e) {
+        showMessage("Network error or invalid access. Try again later.", "red");
+      }
+    }
+
+    function showMessage(msg, type) {
+      messageBox.className = type + " msg-icon";
+      messageBox.innerHTML = msg;
+      messageBox.classList.remove("hidden");
+    }
+  </script>
+</body>
+  </html>
