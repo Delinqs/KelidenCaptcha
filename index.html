@@ -4,13 +4,13 @@
   <meta charset="UTF-8">
   <title>CAPTCHA Verification</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
+
   <!-- Telegram Web App -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  
+
   <!-- FontAwesome -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/js/all.min.js" crossorigin="anonymous"></script>
-  
+
   <style>
     body {
       background: #000080;
@@ -30,7 +30,7 @@
       animation: dropFade 0.9s ease-in-out;
     }
     .msg-box {
-      display: flex;
+      display: none;
       align-items: center;
       justify-content: flex-start;
       margin-bottom: 20px;
@@ -63,84 +63,98 @@
     @keyframes dropFade { from { opacity: 0; transform: translateY(-40px) } to { opacity: 1; transform: translateY(0) } }
     @keyframes fadeSlide { from { opacity: 0; transform: translateX(-10px) } to { opacity: 1; transform: translateX(0) } }
     @keyframes pulse {0%,100%{transform:scale(1);}50%{transform:scale(1.05);}}
+    .hidden { display: none; }
   </style>
 </head>
 <body>
-  
+
   <div class="box">
     <h2><i class="fas fa-shield-alt" style="color:#007bff;"></i> CAPTCHA Verification</h2>
     <p style="color:#555;">Please verify you're not a robot. Your IP and device will be reviewed.</p>
     <div id="message" class="msg-box hidden"><i></i><span></span></div>
     <button id="verifyBtn" class="btn">✔️ Verify Now</button>
   </div>
-  
+
   <div class="warning">
     <i class="fas fa-exclamation-triangle"></i>
     Unauthorized tools, VPNs or emulators will be instantly blocked.
   </div>
-  
+
   <script>
-    Telegram.WebApp.init(); // initialize web app
+    Telegram.WebApp.init(); // initialize Telegram WebApp
+
     const btn = document.getElementById("verifyBtn");
     const msgBox = document.getElementById("message");
     const iconEl = msgBox.querySelector("i");
     const textEl = msgBox.querySelector("span");
-  
+
     const params = new URLSearchParams(window.location.search);
     const webhook = params.get("webhookUrl");
     const back = params.get("back");
-  
+
     function show(msg, type) {
-      iconEl.className = type === "success"
-        ? "fas fa-check-circle" : "fas fa-times-circle";
-      msgBox.style.display = "flex";
+      iconEl.className = type === "success" ? "fas fa-check-circle" : "fas fa-times-circle";
       msgBox.className = "msg-box " + type;
+      msgBox.style.display = "flex";
       textEl.textContent = msg;
     }
-  
+
     function reset() {
       btn.disabled = false;
       btn.textContent = "✔️ Verify Now";
+      btn.onclick = handleVerify; // reset click handler
     }
-  
-    btn.addEventListener("click", async () => {
+
+    async function handleVerify() {
       btn.disabled = true;
       btn.textContent = "⌛ Checking...";
       msgBox.style.display = "none";
-  
+
       try {
         const res = await fetch("https://ipapi.co/json/");
         const data = await res.json();
-  
+
         const suspicious = data.security?.vpn || data.security?.proxy || data.security?.tor;
         const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+
         if (suspicious || !isMobile) {
           show("Suspicious activity detected. VPNs or Emulators are not allowed.", "error");
-          return reset();
+          reset();
+          return;
         }
-  
+
         const resp = await fetch(webhook, {
           method: "POST",
-          headers: {"Content-Type":"application/json"},
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            results:{ ip:data.ip, vpn:suspicious?"yes":"no", captcha:true }
+            results: {
+              ip: data.ip,
+              vpn: suspicious ? "yes" : "no",
+              captcha: true
+            }
           })
         });
+
         if (!resp.ok) throw new Error("Webhook failed");
-  
+
         show("Verification successful. You may now return.", "success");
         btn.textContent = "➡️ Go Back";
         btn.disabled = false;
-        btn.addEventListener("click", () => {
-          if (Telegram.WebApp) Telegram.WebApp.close();
-          else window.location = back;
-        });
-  
+        btn.onclick = () => {
+          if (Telegram.WebApp && Telegram.WebApp.close) {
+            Telegram.WebApp.close();
+          } else {
+            window.location.href = back;
+          }
+        };
       } catch (err) {
         show("Verification failed. Please check your connection and try again.", "error");
-        return reset();
+        reset();
       }
-    });
+    }
+
+    // Initial bind
+    btn.onclick = handleVerify;
   </script>
 </body>
 </html>
