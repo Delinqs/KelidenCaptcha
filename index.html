@@ -4,68 +4,44 @@
   <meta charset="UTF-8">
   <title>CAPTCHA Verification</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <!-- Telegram Web App support -->
+  
+  <!-- Telegram Web App -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-
-  <!-- Font Awesome for icons -->
+  
+  <!-- FontAwesome -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/js/all.min.js" crossorigin="anonymous"></script>
-
+  
   <style>
     body {
       background: #000080;
       font-family: 'Segoe UI', sans-serif;
       padding: 40px 20px;
-      overflow-x: hidden;
       color: white;
+      text-align: center;
     }
-
     .box {
       max-width: 480px;
       margin: 70px auto;
       padding: 35px;
-      border-radius: 18px;
       background: white;
       color: #222;
-      box-shadow: 0 18px 35px rgba(0, 0, 0, 0.35);
-      text-align: center;
+      border-radius: 18px;
+      box-shadow: 0 18px 35px rgba(0,0,0,0.35);
       animation: dropFade 0.9s ease-in-out;
     }
-
     .msg-box {
       display: flex;
       align-items: center;
-      justify-content: start;
-      padding: 15px 18px;
-      border-radius: 10px;
+      justify-content: flex-start;
+      margin-bottom: 20px;
+      padding: 12px 18px;
+      border-radius: 8px;
       font-size: 15.5px;
-      margin-bottom: 25px;
-      font-weight: 500;
-      box-shadow: 0 0 12px rgba(0, 0, 0, 0.15);
-      transform: scale(1);
       animation: fadeSlide 0.6s ease-out;
     }
-
-    .msg-box.success {
-      background: #e0ffe5;
-      color: #0b5d1e;
-      border-left: 5px solid #28a745;
-      box-shadow: 0 0 12px rgba(40, 167, 69, 0.3);
-    }
-
-    .msg-box.error {
-      background: #ffe2e2;
-      color: #721c24;
-      border-left: 5px solid #dc3545;
-      box-shadow: 0 0 12px rgba(220, 53, 69, 0.3);
-    }
-
-    .msg-box i {
-      margin-right: 12px;
-      font-size: 18px;
-      min-width: 22px;
-    }
-
+    .msg-box.success { background: #e0ffe5; color: #0b5d1e; }
+    .msg-box.error   { background: #ffe2e2; color: #721c24; }
+    .msg-box i { margin-right: 10px; font-size: 18px; }
     .btn {
       background: #007bff;
       color: white;
@@ -73,139 +49,98 @@
       border: none;
       border-radius: 7px;
       font-size: 16px;
-      font-weight: bold;
-      cursor: pointer;
       width: 100%;
       transition: all 0.3s ease;
     }
-
-    .btn:hover {
-      background: #0056b3;
-      transform: scale(1.03);
-    }
-
-    .btn:disabled {
-      background: #aaa;
-      cursor: not-allowed;
-    }
-
+    .btn:disabled { background: #aaa; cursor: not-allowed; }
+    .btn:hover:not(:disabled) { background: #0056b3; transform: scale(1.03); }
     .warning {
-      margin-top: 70px;
-      text-align: center;
-      animation: pulse 2s infinite;
+      margin-top: 50px;
       font-size: 15.5px;
-      font-weight: bold;
       color: #ffcc00;
-      text-shadow: 1px 1px 2px #000;
+      animation: pulse 2s infinite;
     }
-
-    .warning i {
-      margin-right: 6px;
-      color: #ffcc00;
-    }
-
-    @keyframes dropFade {
-      0% { transform: translateY(-40px); opacity: 0; }
-      100% { transform: translateY(0); opacity: 1; }
-    }
-
-    @keyframes fadeSlide {
-      0% { opacity: 0; transform: translateX(-10px); }
-      100% { opacity: 1; transform: translateX(0); }
-    }
-
-    @keyframes pulse {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.05); }
-    }
+    @keyframes dropFade { from { opacity: 0; transform: translateY(-40px) } to { opacity: 1; transform: translateY(0) } }
+    @keyframes fadeSlide { from { opacity: 0; transform: translateX(-10px) } to { opacity: 1; transform: translateX(0) } }
+    @keyframes pulse {0%,100%{transform:scale(1);}50%{transform:scale(1.05);}}
   </style>
 </head>
 <body>
-
-  <div class="box" id="statusBox">
-    <div id="message" class="hidden"></div>
-    <h2 style="margin-bottom: 12px; color: #222;">
-      <i class="fas fa-shield-alt" style="color:#007bff;"></i> CAPTCHA Verification
-    </h2>
-    <p style="color: #555;">Please verify you're not a robot. Your IP and device will be reviewed.</p>
-    <button class="btn" id="verifyBtn" onclick="startVerification()">
-      <i class="fas fa-check-circle"></i> Verify Now
-    </button>
+  
+  <div class="box">
+    <h2><i class="fas fa-shield-alt" style="color:#007bff;"></i> CAPTCHA Verification</h2>
+    <p style="color:#555;">Please verify you're not a robot. Your IP and device will be reviewed.</p>
+    <div id="message" class="msg-box hidden"><i></i><span></span></div>
+    <button id="verifyBtn" class="btn">✔️ Verify Now</button>
   </div>
-
+  
   <div class="warning">
     <i class="fas fa-exclamation-triangle"></i>
-    Unauthorized tools, VPNs or emulators will be instantly blocked. Stay clean!
+    Unauthorized tools, VPNs or emulators will be instantly blocked.
   </div>
-
+  
   <script>
-    const urlParams = new URLSearchParams(window.location.search);
-    const webhookUrl = urlParams.get("webhookUrl");
-    const back = urlParams.get("back");
-
-    const messageBox = document.getElementById("message");
-    const button = document.getElementById("verifyBtn");
-
-    async function startVerification() {
-      button.disabled = true;
-      button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
-
+    Telegram.WebApp.init(); // initialize web app
+    const btn = document.getElementById("verifyBtn");
+    const msgBox = document.getElementById("message");
+    const iconEl = msgBox.querySelector("i");
+    const textEl = msgBox.querySelector("span");
+  
+    const params = new URLSearchParams(window.location.search);
+    const webhook = params.get("webhookUrl");
+    const back = params.get("back");
+  
+    function show(msg, type) {
+      iconEl.className = type === "success"
+        ? "fas fa-check-circle" : "fas fa-times-circle";
+      msgBox.style.display = "flex";
+      msgBox.className = "msg-box " + type;
+      textEl.textContent = msg;
+    }
+  
+    function reset() {
+      btn.disabled = false;
+      btn.textContent = "✔️ Verify Now";
+    }
+  
+    btn.addEventListener("click", async () => {
+      btn.disabled = true;
+      btn.textContent = "⌛ Checking...";
+      msgBox.style.display = "none";
+  
       try {
         const res = await fetch("https://ipapi.co/json/");
         const data = await res.json();
-
+  
         const suspicious = data.security?.vpn || data.security?.proxy || data.security?.tor;
         const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
-
         if (suspicious || !isMobile) {
-          showMessage("Suspicious activity detected. VPNs or Emulators are not allowed.", "error");
-          resetButton();
-          return;
+          show("Suspicious activity detected. VPNs or Emulators are not allowed.", "error");
+          return reset();
         }
-
-        // Send full payload to webhook
-        await fetch(webhookUrl, {
+  
+        const resp = await fetch(webhook, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {"Content-Type":"application/json"},
           body: JSON.stringify({
-            results: {
-              ip: data.ip,
-              vpn: suspicious ? "yes" : "no",
-              captcha: true
-            }
+            results:{ ip:data.ip, vpn:suspicious?"yes":"no", captcha:true }
           })
         });
-
-        showMessage("Verification successful. You may now return.", "success");
-        button.innerHTML = '<i class="fas fa-arrow-right"></i> Go Back';
-        button.disabled = false;
-
-        // Close Telegram WebApp
-        button.onclick = () => {
-          if (window.Telegram && Telegram.WebApp) {
-            Telegram.WebApp.close();
-          } else {
-            window.location.href = back;
-          }
-        };
-
-      } catch (e) {
-        showMessage("Verification failed. Please check your connection and try again.", "error");
-        resetButton();
+        if (!resp.ok) throw new Error("Webhook failed");
+  
+        show("Verification successful. You may now return.", "success");
+        btn.textContent = "➡️ Go Back";
+        btn.disabled = false;
+        btn.addEventListener("click", () => {
+          if (Telegram.WebApp) Telegram.WebApp.close();
+          else window.location = back;
+        });
+  
+      } catch (err) {
+        show("Verification failed. Please check your connection and try again.", "error");
+        return reset();
       }
-    }
-
-    function showMessage(msg, type) {
-      messageBox.className = `msg-box ${type}`;
-      messageBox.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-times-circle'}"></i> ${msg}`;
-      messageBox.classList.remove("hidden");
-    }
-
-    function resetButton() {
-      button.disabled = false;
-      button.innerHTML = '<i class="fas fa-check-circle"></i> Verify Now';
-    }
+    });
   </script>
-
 </body>
 </html>
